@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Office Drink Ordering System",
+  "description": "An elegant, single-file office drink ordering web application integrated with Google Apps Script backend.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

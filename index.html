@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辦公室飲料訂購系統 🥤</title>
+    <!-- Google Fonts: Plus Jakarta Sans, Inter, Space Grotesk & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" font-display="swap">
+    
+    <!-- Material Symbols Outlined for Sleek minimalist vector graphics -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <!-- React & ReactDOM 18 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel Standalone for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',     // indigo-50
+                            100: '#ede9fe',    // indigo-100
+                            200: '#ddd6fe',    // indigo-200
+                            500: '#6366f1',    // indigo-500
+                            600: '#4f46e5',    // indigo-600
+                            700: '#4338ca',    // indigo-700
+                            800: '#3730a3',
+                            900: '#312e81',
+                        },
+                        accent: {
+                            50: '#ecfdf5',     // emerald-50
+                            100: '#d1fae5',    // emerald-100
+                            500: '#10b981',    // emerald-500
+                            600: '#059669',    // emerald-600
+                        },
+                        amberAccent: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Noto Sans TC"', 'Inter', 'system-ui', 'sans-serif'],
+                        display: ['"Space Grotesk"', '"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    boxShadow: {
+                        'premium': '0 8px 30px rgba(0, 0, 0, 0.03)',
+                        'card': '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 30px rgba(15, 23, 42, 0.04)',
+                        'hover-card': '0 16px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.02)',
+                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.037)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: "Plus Jakarta Sans", "Noto Sans TC", sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        /* Custom sleek scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Shimmer effect for loading skeleton */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .animate-shimmer {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+
+        /* Material Symbols Outlined sizing utility */
+        .icon {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12 select-none bg-neutral-50/50">
+    <!-- Root Mounting Element -->
+    <div id="root"></div>
+
+    <!-- Script Block for React application compiled by Babel -->
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // ==================== CONFIGURATION & DEFAULT DATA ====================
+        const STORAGE_KEY_GAS_URL = 'OFFICE_DRINK_GAS_URL';
+        const STORAGE_KEY_LOCAL_ORDERS = 'OFFICE_DRINK_LOCAL_ORDERS';
+        
+        // Initial / Default Menu in case API is empty or offline
+        const DEFAULT_MENU = [
+            // Category: 經典茶飲 (Classic Brews)
+            { id: "m1", name: "茉莉綠茶", price: 35, category: "經典茶飲", description: "採用在地新鮮茉莉焙薰烘製，口感輕盈芬芳、回甘解膩。" },
+            { id: "m2", name: "炭焙熟火烏龍", price: 35, category: "經典茶飲", description: "老師傅慢火炭焙茶葉，焙火香氣沉穩，滋味甘醇深邃。" },
+            { id: "m3", name: "莊園阿薩姆紅茶", price: 35, category: "經典茶飲", description: "香氣飽滿扎實，帶有淡淡的麥芽與頂級莊園熟果甜香。" },
+            { id: "m4", name: "四季春青茶", price: 35, category: "經典茶飲", description: "清高幽雅的四季春香氣，湯色金黃翠綠，醇和清爽。" },
+            
+            // Category: 小農鮮奶 (Farm fresh milk)
+            { id: "m5", name: "小農靜岡抹茶鮮奶", price: 65, category: "小農鮮奶", description: "日本靜岡頂級石磨抹茶粉搭配小農契約合作100%純鮮乳。" },
+            { id: "m6", name: "手作黑糖初鹿鮮奶", price: 65, category: "小農鮮奶", description: "獨家黑糖慢火熬煮黑糖珍珠，淋入香濃乳香十足的純鮮鮮奶。" },
+            { id: "m7", name: "炭焙拿鐵咖啡", price: 70, category: "小農鮮奶", description: "現磨深烘焙阿拉比卡咖啡豆，結合香滑豐沛的濃口綿密奶泡。" },
+            { id: "m8", name: "皇家大吉嶺紅茶鮮奶", price: 55, category: "小農鮮奶", description: "大吉嶺紅茶的麝香葡萄清香，融入溫潤溫和頂級鮮乳。" },
+
+            // Category: 特調奶茶 (Creamy Milk Teas)
+            { id: "m9", name: "經典焦糖珍珠奶茶", price: 55, category: "特調奶茶", description: "特調絲滑特濃奶茶，蜜漬 Q 彈黑糖珍珠，下午茶的首選嚼感。" },
+            { id: "m10", name: "黑糖芋香燕麥奶茶", price: 60, category: "特調奶茶", description: "在地大甲芋頭製作的手工細緻芋泥，口口富含燕麥咬感與黑糖香。" },
+            { id: "m11", name: "港式凍絲襪奶茶", price: 50, category: "特調奶茶", description: "遵循傳統拉茶工藝展現茶香濃厚，口感豐滿幼滑，香濃極致。" },
+
+            // Category: 鮮果特調 (Fruit Teas)
+            { id: "m12", name: "百香雙Q金萱茶", price: 55, category: "鮮果特調", description: "酸甜百香果原汁佐以鮮黃金萱，椰果與珍珠的雙重極限咀嚼享受。" },
+            { id: "m13", name: "秘製香芒綠茶", price: 60, category: "鮮果特調", description: "當季完熟愛文芒果現榨融合茉莉清綠，多汁甜香在唇齒間綻放。" },
+            { id: "m14", name: "屏東香檸翡翠綠", price: 50, category: "鮮果特調", description: "產地直送屏東鮮榨四季綠檸檬，香酸帶勁完美襯托茶湯花香。" }
+        ];
+
+        // Placeholder local simulated orders for first run
+        const INITIAL_DEMO_ORDERS = [
+            { orderId: "demo-o1", timestamp: "10:15", name: "陳總經理", drink: "炭焙拿鐵咖啡", sugar: "無糖", ice: "少冰", quantity: 1, totalPrice: 70 },
+            { orderId: "demo-o2", timestamp: "10:28", name: "林雅筑 (設計師)", drink: "小農靜岡抹茶鮮奶", sugar: "半糖", ice: "微冰", quantity: 2, totalPrice: 130 },
+            { orderId: "demo-o3", timestamp: "11:05", name: "黃志明 (軟體工程)", drink: "經典焦糖珍珠奶茶", sugar: "微糖", ice: "正常冰", quantity: 1, totalPrice: 55 },
+            { orderId: "demo-o4", timestamp: "11:30", name: "張美琪 (行銷部)", drink: "百香雙Q金萱茶", sugar: "半糖", ice: "去冰", quantity: 1, totalPrice: 55 }
+        ];
+
+        // ==================== MAIN APP COMPONENT ====================
+        function App() {
+            // Retrieve storage state
+            const [gasUrl, setGasUrl] = useState(() => {
+                return localStorage.getItem(STORAGE_KEY_GAS_URL) || "https://script.google.com/macros/s/AKfycbyR675_zGst7Oa_qVf0SshXmGstFLa9U5_8y-e7KArGg9-hU7oFq3NlXbYm5_API_DEMO/exec";
+            });
+            const [isLocalMode, setIsLocalMode] = useState(true);
+            const [menu, setMenu] = useState(DEFAULT_MENU);
+            const [orders, setOrders] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [apiError, setApiError] = useState(null);
+            const [toastMessage, setToastMessage] = useState(null);
+            const [editingOrder, setEditingOrder] = useState(null);
+            const [showSettings, setShowSettings] = useState(false);
+            const [tempUrl, setTempUrl] = useState(gasUrl);
+            
+            // Custom high-quality confirm modal states
+            const [confirmDialog, setConfirmDialog] = useState(null);
+
+            // Ref for scrolling to form
+            const formContainerRef = useRef(null);
+
+            // Toast helper
+            const triggerToast = (msg, type = 'success') => {
+                setToastMessage({ text: msg, type });
+                setTimeout(() => setToastMessage(null), 3500);
+            };
+
+            // Detect Mode and Load Data
+            useEffect(() => {
+                const isPlaceholder = !gasUrl || gasUrl.includes("API_DEMO") || gasUrl.trim() === "";
+                setIsLocalMode(isPlaceholder);
+                fetchData(gasUrl, isPlaceholder);
+            }, [gasUrl]);
+
+            // GET Request - Load Menu and Orders
+            const fetchData = async (url, useLocalFallback) => {
+                setLoading(true);
+                setApiError(null);
+                
+                if (useLocalFallback) {
+                    setTimeout(() => {
+                        const localOrders = localStorage.getItem(STORAGE_KEY_LOCAL_ORDERS);
+                        if (localOrders) {
+                            setOrders(JSON.parse(localOrders));
+                        } else {
+                            localStorage.setItem(STORAGE_KEY_LOCAL_ORDERS, JSON.stringify(INITIAL_DEMO_ORDERS));
+                            setOrders(INITIAL_DEMO_ORDERS);
+                        }
+                        setMenu(DEFAULT_MENU);
+                        setLoading(false);
+                        triggerToast("已自動載入今日即時點單數據 (離線展示模式)", "info");
+                    }, 600);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`伺服器回應錯誤 (代碼 ${response.status})`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result && result.menu && Array.isArray(result.menu) && result.menu.length > 0) {
+                        setMenu(result.menu);
+                    } else {
+                        setMenu(DEFAULT_MENU);
+                    }
+
+                    if (result && result.orders && Array.isArray(result.orders)) {
+                        setOrders(result.orders);
+                    } else {
+                        setOrders([]);
+                    }
+                    
+                    setIsLocalMode(false);
+                    triggerToast("成功讀取雲端 GAS 資料庫！", "success");
+                } catch (err) {
+                    console.error("fetch api error:", err);
+                    setApiError(`無法連接至 Google Apps Script 網址。\n已自動切換回【離線展示模擬模式】以提供不中斷服務！\n原因: ${err.message}`);
+                    setIsLocalMode(true);
+                    
+                    const localOrders = localStorage.getItem(STORAGE_KEY_LOCAL_ORDERS) || JSON.stringify(INITIAL_DEMO_ORDERS);
+                    setOrders(JSON.parse(localOrders));
+                    setMenu(DEFAULT_MENU);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // POST Action Runner
+            const runPostAction = async (action, orderData) => {
+                setLoading(true);
+                
+                if (isLocalMode) {
+                    setTimeout(() => {
+                        let updatedOrders = [...orders];
+                        const currentTimeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+                        
+                        if (action === 'create') {
+                            const newOrder = {
+                                ...orderData,
+                                orderId: `local-uuid-${Date.now()}`,
+                                timestamp: currentTimeStr
+                            };
+                            updatedOrders.unshift(newOrder);
+                            triggerToast(`點單成功！歡迎喝茶 🎉`);
+                        } else if (action === 'update') {
+                            updatedOrders = updatedOrders.map(o => 
+                                o.orderId === orderData.orderId ? { ...o, ...orderData, timestamp: currentTimeStr } : o
+                            );
+                            triggerToast(`修改點單規格成功！`);
+                            setEditingOrder(null);
+                        } else if (action === 'delete') {
+                            updatedOrders = updatedOrders.filter(o => o.orderId !== orderData.orderId);
+                            triggerToast(`點單項目已成功移除。`, "warning");
+                        }
+                        
+                        localStorage.setItem(STORAGE_KEY_LOCAL_ORDERS, JSON.stringify(updatedOrders));
+                        setOrders(updatedOrders);
+                        setLoading(false);
+                    }, 500);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify({
+                            action: action,
+                            data: orderData
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`傳送資料失敗 (狀態碼 ${response.status})`);
+                    }
+
+                    const jsonRes = await response.json();
+                    
+                    if (jsonRes.status === 'success') {
+                        await fetchData(gasUrl, false);
+                        if (action === 'create') triggerToast(`雲端同步：點單建立成功！`);
+                        if (action === 'update') {
+                            triggerToast(`雲端同步：點單更新成功！`);
+                            setEditingOrder(null);
+                        }
+                        if (action === 'delete') triggerToast(`雲端同步：點單刪除成功。`, "warning");
+                    } else {
+                        throw new Error(jsonRes.message || "伺服器返回處理錯誤");
+                    }
+                } catch (err) {
+                    console.error("POST action failure:", err);
+                    triggerToast(`API 遠端同步失敗，已轉用本地快取記錄！`, "error");
+                    
+                    let updatedOrders = [...orders];
+                    const currentTimeStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    
+                    if (action === 'create') {
+                        const newOrder = {
+                            ...orderData,
+                            orderId: `failover-uuid-${Date.now()}`,
+                            timestamp: currentTimeStr
+                        };
+                        updatedOrders.unshift(newOrder);
+                    } else if (action === 'update') {
+                        updatedOrders = updatedOrders.map(o => 
+                            o.orderId === orderData.orderId ? { ...o, ...orderData, timestamp: currentTimeStr } : o
+                        );
+                        setEditingOrder(null);
+                    } else if (action === 'delete') {
+                        updatedOrders = updatedOrders.filter(o => o.orderId !== orderData.orderId);
+                    }
+                    
+                    localStorage.setItem(STORAGE_KEY_LOCAL_ORDERS, JSON.stringify(updatedOrders));
+                    setOrders(updatedOrders);
+                    setLoading(false);
+                }
+            };
+
+            // Handle edit state trigger from card buttons
+            const handleEditTrigger = (order) => {
+                setEditingOrder(order);
+                if (formContainerRef.current) {
+                    formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                triggerToast(`已將 ${order.name} 的點單品項載入編輯器。`, "info");
+            };
+
+            // Setup customized elegant delete confirm model
+            const handleAskDelete = (order) => {
+                setConfirmDialog({
+                    title: "確定要刪除點單項目嗎？",
+                    description: `您即將移除 ${order.name} 點選的「${order.drink} (${order.sugar}/${order.ice}) x ${order.quantity}杯」。此刪除操作在儲存後將同步覆寫伺服器。`,
+                    confirmText: "確認移除",
+                    cancelText: "保留此杯",
+                    onConfirm: () => {
+                        runPostAction('delete', { orderId: order.orderId });
+                        setConfirmDialog(null);
+                    }
+                });
+            };
+
+            const handleSaveSettings = (e) => {
+                e.preventDefault();
+                localStorage.setItem(STORAGE_KEY_GAS_URL, tempUrl);
+                setGasUrl(tempUrl);
+                setShowSettings(false);
+            };
+
+            // Calculate overall analytics
+            const orderStats = useMemo(() => {
+                const totalCups = orders.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
+                const totalCash = orders.reduce((acc, curr) => acc + Number(curr.totalPrice || 0), 0);
+                
+                const drinkCounts = {};
+                orders.forEach(o => {
+                    drinkCounts[o.drink] = (drinkCounts[o.drink] || 0) + Number(o.quantity || 0);
+                });
+                let topDrinkName = "暫無點購";
+                let maxCount = 0;
+                Object.entries(drinkCounts).forEach(([name, count]) => {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        topDrinkName = name;
+                    }
+                });
+
+                return {
+                    totalCups,
+                    totalCash,
+                    topDrink: topDrinkName,
+                    topDrinkCount: maxCount
+                };
+            }, [orders]);
+
+            return (
+                <div class="relative antialiased bg-slate-50/50 min-h-screen">
+                    
+                    {/* TOAST SYSTEM (Sleek minimalist alert) */}
+                    {toastMessage && (
+                        <div class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div class="px-4 py-2.5 rounded-2xl bg-slate-900/95 backdrop-blur-md border border-slate-700/35 shadow-xl flex items-center space-x-2.5 transition-all text-xs font-semibold text-white">
+                                <span class="text-xs flex items-center select-none">{
+                                    toastMessage.type === 'error' ? <span class="text-red-400 icon text-[16px]">error</span> :
+                                    toastMessage.type === 'warning' ? <span class="text-amber-400 icon text-[16px]">warning</span> :
+                                    toastMessage.type === 'info' ? <span class="text-sky-400 icon text-[16px]">info</span> :
+                                    <span class="text-emerald-400 icon text-[16px]">check_circle</span>
+                                }</span>
+                                <span class="tracking-wide text-[11px] font-medium">{toastMessage.text}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PREMIUM CONFIRMATION DIALOG (Sleek modal matching the theme) */}
+                    {confirmDialog && (
+                        <div class="fixed inset-0 bg-slate-950/45 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                            <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-hover-card border border-slate-100 animate-in zoom-in-95 duration-200">
+                                <div class="text-center mb-5">
+                                    <div class="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100/50">
+                                        <span class="icon text-xl text-red-500">delete_sweep</span>
+                                    </div>
+                                    <h3 class="text-sm font-bold text-slate-900 tracking-tight">{confirmDialog.title}</h3>
+                                    <p class="text-[11px] text-slate-500 mt-2.5 leading-relaxed">{confirmDialog.description}</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-xs font-bold mt-6">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setConfirmDialog(null)}
+                                        class="py-2.5 border border-slate-200/80 text-slate-600 rounded-xl hover:bg-slate-50 active:scale-98 transition duration-150"
+                                    >
+                                        {confirmDialog.cancelText}
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={confirmDialog.onConfirm}
+                                        class="py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-sm hover:shadow active:scale-98 transition duration-150"
+                                    >
+                                        {confirmDialog.confirmText}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* API CONFIGURATION BOX POPUP */}
+                    {showSettings && (
+                        <div class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                            <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-hover-card border border-slate-100 animate-in zoom-in-95 duration-200">
+                                <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                                    <h3 class="text-xs font-bold text-slate-900 tracking-tight flex items-center">
+                                        <span class="icon text-brand-600 mr-1.5 text-[18px]">api</span>
+                                        配置 Google 試算表 GAS API
+                                    </h3>
+                                    <button onClick={() => setShowSettings(false)} class="text-slate-400 hover:text-slate-600 text-sm select-none">✕</button>
+                                </div>
+                                <form onSubmit={handleSaveSettings} class="space-y-4">
+                                    <p class="text-[11px] text-slate-500 leading-normal">
+                                        請輸入您的 Google Apps Script 部署後的「網頁應用程式網址 (Web App URL)」以進行即時寫入：
+                                    </p>
+                                    <div>
+                                        <input 
+                                            type="url" 
+                                            value={tempUrl} 
+                                            onChange={(e) => setTempUrl(e.target.value)}
+                                            placeholder="https://script.google.com/macros/s/.../exec"
+                                            class="w-full text-[11px] px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-700 bg-slate-50/50 font-mono"
+                                        />
+                                    </div>
+                                    <div class="text-[10px] text-amber-700 bg-amber-50/70 p-3 rounded-2xl border border-amber-100/50 leading-relaxed">
+                                        💡 <strong>預覽小提示：</strong>若保持預設或空白，網頁將自動運作於<strong>精美本地模擬預覽模式</strong>，您的資料會儲存在瀏覽器的 localStorage 中，非常適合無資料庫時線下單機、雙擊本地即時點單演示！
+                                    </div>
+                                    <div class="flex justify-end space-x-2 pt-2 text-xs font-bold">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                setTempUrl("");
+                                                localStorage.removeItem(STORAGE_KEY_GAS_URL);
+                                                setGasUrl("");
+                                                setShowSettings(false);
+                                                triggerToast("已切換回預廠本地離線模式！", "info");
+                                            }}
+                                            class="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
+                                        >
+                                            重設展示模式
+                                        </button>
+                                        <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md hover:shadow transition duration-150">
+                                            套用雲端配置
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TOP PLATFORM HEADER */}
+                    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200/50 shadow-sm transition-all duration-300">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+                            
+                            {/* Brand Header */}
+                            <div class="flex items-center space-x-3">
+                                <div class="bg-slate-900 text-white w-10 h-10 rounded-2xl flex items-center justify-center shadow-md shrink-0">
+                                    <span class="icon text-white text-[20px] select-none">local_cafe</span>
+                                </div>
+                                <div>
+                                    <h1 class="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-tight font-sans flex items-center gap-1.5">
+                                        茗茶聚落 ‧ 辦公室下午茶點單
+                                    </h1>
+                                    <p class="text-[10px] text-slate-400 font-medium tracking-normal mt-0.5">
+                                        與 Google Sheets 即時同步的極簡高質感辦公室訂購系統
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Status controls */}
+                            <div class="flex items-center space-x-2">
+                                {/* Network tag */}
+                                <div class={`text-[10px] sm:text-[11px] px-3 py-1.5 rounded-full flex items-center space-x-1.5 font-semibold transition-all duration-300 ${
+                                    isLocalMode 
+                                        ? 'bg-amber-50 text-amber-700 border border-amber-200/50' 
+                                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200/50'
+                                }`}>
+                                    <span class={`w-1.5 h-1.5 rounded-full ${isLocalMode ? 'bg-amber-400' : 'bg-emerald-500 animate-pulse'}`}></span>
+                                    <span class="hidden sm:inline">{isLocalMode ? '本地展示模式' : '已連接試算表'}</span>
+                                    <span class="sm:hidden">{isLocalMode ? '本地' : '同步中'}</span>
+                                </div>
+
+                                {/* Gear button */}
+                                <button 
+                                    onClick={() => setShowSettings(true)}
+                                    class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                                    title="設定試算表 API"
+                                >
+                                    <span class="icon text-[18px] select-none">settings</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* CORE CONTENT LAYOUT */}
+                    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        
+                        {/* LEFT FORM (40% width) */}
+                        <section ref={formContainerRef} class="lg:col-span-5 space-y-4">
+                            {apiError && (
+                                <div class="bg-amber-50/70 border-l-4 border-amber-500 rounded-2xl p-4 text-[11px] text-amber-900 leading-relaxed shadow-sm">
+                                    <div class="flex items-center space-x-1.3 font-bold mb-1">
+                                        <span class="icon text-amber-600 text-[14px]">warning</span>
+                                        <span>連線提示：</span>
+                                    </div>
+                                    <p class="font-medium opacity-85 leading-normal">{apiError}</p>
+                                    <div class="mt-2 text-right">
+                                        <button 
+                                            onClick={() => setShowSettings(true)}
+                                            class="text-brand-700 bg-amber-100 hover:bg-amber-200/80 transition px-2 py-1 rounded-lg font-bold text-[10px]"
+                                        >
+                                            變更 API 設定
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <OrderForm 
+                                menu={menu} 
+                                onSubmit={runPostAction} 
+                                editingOrder={editingOrder} 
+                                triggerToast={triggerToast}
+                                onCancelEdit={() => {
+                                    setEditingOrder(null);
+                                    triggerToast("已取消編輯", "info");
+                                }}
+                                isLocalMode={isLocalMode}
+                            />
+                        </section>
+
+                        {/* RIGHT COLUMN LIST & ANALYTICS (60% width) */}
+                        <section class="lg:col-span-7 space-y-5">
+                            
+                            {/* OVERALL STATISTICS SUMMARY */}
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="bg-white border border-slate-200/40 rounded-3xl p-4 shadow-card flex flex-col justify-between relative overflow-hidden group hover:border-slate-300/60 transition-all duration-300">
+                                    <span class="text-slate-400 text-[9px] font-bold tracking-wider block uppercase">累積總杯數</span>
+                                    <span class="text-2xl font-extrabold mt-1.5 text-slate-800 font-display flex items-baseline gap-1">
+                                        {loading ? <span class="text-sm">...</span> : orderStats.totalCups} 
+                                        <span class="text-[10px] text-slate-400 font-medium">杯</span>
+                                    </span>
+                                    <div class="absolute -right-2 -bottom-2 opacity-5 scale-150 text-slate-800 select-none">
+                                        <span class="icon text-5xl">shopping_cart</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white border border-slate-200/40 rounded-3xl p-4 shadow-card flex flex-col justify-between relative overflow-hidden group hover:border-slate-300/60 transition-all duration-300">
+                                    <span class="text-slate-400 text-[9px] font-bold tracking-wider block uppercase">今日點單金</span>
+                                    <span class="text-2xl font-extrabold mt-1.5 text-slate-800 font-display">
+                                        {loading ? <span class="text-sm">...</span> : `NT$ ${orderStats.totalCash}`}
+                                    </span>
+                                    <div class="absolute -right-2 -bottom-2 opacity-5 scale-150 text-slate-800 select-none">
+                                        <span class="icon text-5xl">payments</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white border border-slate-200/40 rounded-3xl p-4 shadow-card flex flex-col justify-between relative overflow-hidden group hover:border-slate-300/60 transition-all duration-300">
+                                    <span class="text-slate-400 text-[9px] font-bold tracking-wider block uppercase">第一名熱銷</span>
+                                    <span class="text-[11px] font-bold mt-2 text-slate-800 truncate max-w-full block" title={orderStats.topDrink}>
+                                        {loading ? <span class="text-xs">...</span> : orderStats.topDrink}
+                                    </span>
+                                    <span class="text-[9px] text-slate-400 font-medium block mt-0.5">
+                                        {orderStats.topDrinkCount > 0 ? `累積銷量 ${orderStats.topDrinkCount} 杯` : `暫無飲料數據`}
+                                    </span>
+                                    <div class="absolute -right-2 -bottom-2 opacity-5 scale-150 text-slate-800 select-none">
+                                        <span class="icon text-5xl">star</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ORDERS DETAILS LAYOUT */}
+                            <OrderList 
+                                orders={orders} 
+                                loading={loading} 
+                                onEdit={handleEditTrigger} 
+                                onDelete={handleAskDelete}
+                            />
+                        </section>
+                    </main>
+
+                    {/* GLOBAL FOOTER INFO */}
+                    <footer class="max-w-7xl mx-auto px-4 mt-16 pb-8 text-center text-[10px] text-slate-400/80">
+                        <p>© 2026 茗茶聚落 ‧ 辦公室下午茶點單系統 | 精巧微型微架構 單頁儲存、極簡流線設計風格</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        // ==================== ORDER FORM SUB-COMPONENT ====================
+        function OrderForm({ menu, onSubmit, editingOrder, onCancelEdit, triggerToast }) {
+            const [selectedCategory, setSelectedCategory] = useState("全部");
+            const [selectedDrink, setSelectedDrink] = useState(null);
+            const [name, setName] = useState("");
+            const [sugar, setSugar] = useState("半糖");
+            const [ice, setIce] = useState("少冰");
+            const [quantity, setQuantity] = useState(1);
+
+            // Fetch distinct categories
+            const categories = useMemo(() => {
+                const cats = new Set(menu.map(item => item.category));
+                return ["全部", ...Array.from(cats)];
+            }, [menu]);
+
+            // Sync values with editing order item
+            useEffect(() => {
+                if (editingOrder) {
+                    setName(editingOrder.name || "");
+                    const matchingDrink = menu.find(d => d.name === editingOrder.drink);
+                    setSelectedDrink(matchingDrink || { name: editingOrder.drink, price: editingOrder.totalPrice / editingOrder.quantity, category: "其他" });
+                    setSugar(editingOrder.sugar || "半糖");
+                    setIce(editingOrder.ice || "少冰");
+                    setQuantity(editingOrder.quantity || 1);
+                } else {
+                    resetForm();
+                }
+            }, [editingOrder]);
+
+            // Auto-select first drink from menu on initial load if none selected
+            useEffect(() => {
+                if (!editingOrder && menu.length > 0 && !selectedDrink) {
+                    setSelectedDrink(menu[0]);
+                }
+            }, [menu]);
+
+            const resetForm = () => {
+                setName("");
+                setSugar("半糖");
+                setIce("少冰");
+                setQuantity(1);
+                if (menu.length > 0) {
+                    setSelectedDrink(menu[0]);
+                }
+            };
+
+            const totalPrice = useMemo(() => {
+                if (!selectedDrink) return 0;
+                return selectedDrink.price * quantity;
+            }, [selectedDrink, quantity]);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!name.trim()) {
+                    triggerToast("請務必寫上【訂購人大名】！", "warning");
+                    return;
+                }
+                if (!selectedDrink) {
+                    triggerToast("請選擇一杯您想要喝的飲品！", "warning");
+                    return;
+                }
+
+                const orderData = {
+                    name: name.trim(),
+                    drink: selectedDrink.name,
+                    sugar,
+                    ice,
+                    quantity: Number(quantity),
+                    totalPrice: Number(totalPrice)
+                };
+
+                if (editingOrder) {
+                    onSubmit('update', {
+                        ...orderData,
+                        orderId: editingOrder.orderId
+                    });
+                } else {
+                    onSubmit('create', orderData);
+                }
+                resetForm();
+            };
+
+            const sugarOptions = ["正常糖", "七分糖", "半糖", "微糖", "無糖"];
+            const iceOptions = ["正常冰", "少冰", "微冰", "去冰", "溫熱"];
+
+            const filteredDrinks = useMemo(() => {
+                if (selectedCategory === "全部") return menu;
+                return menu.filter(item => item.category === selectedCategory);
+            }, [menu, selectedCategory]);
+
+            return (
+                <div class={`bg-white rounded-3xl p-6 shadow-card border transition-all duration-300 ${
+                    editingOrder ? 'ring-2 ring-amber-500 border-transparent bg-amber-50/10' : 'border-slate-200/50'
+                }`}>
+                    
+                    {/* FORM SECTION HEADER */}
+                    <div class="flex items-center justify-between mb-5 border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2.5">
+                            <div class={`w-8 h-8 rounded-xl flex items-center justify-center ${editingOrder ? 'bg-amber-100 text-amber-600' : 'bg-brand-50 text-brand-600'}`}>
+                                <span class="icon text-lg select-none">{editingOrder ? "mode_edit" : "local_bar"}</span>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-bold text-slate-900 tracking-tight">
+                                    {editingOrder ? "修改我的茶飲規格" : "專屬我的下午茶特調"}
+                                </h2>
+                                <p class="text-[10px] text-slate-400 mt-0.5 leading-none">
+                                    {editingOrder ? "正在編輯現有杯項規格" : "細意點選，美味下午茶等候您。"}
+                                </p>
+                            </div>
+                        </div>
+                        {editingOrder && (
+                            <span class="bg-amber-100 text-amber-700 text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                                編輯中
+                            </span>
+                        )}
+                    </div>
+ 
+                    <form onSubmit={handleSubmit} class="space-y-4">
+                        
+                        {/* INPUT: NAME */}
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 flex items-center uppercase tracking-wider">
+                                👤 訂購人姓名 <span class="text-red-500 ml-0.5">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                value={name} 
+                                onChange={(e) => setName(e.target.value)} 
+                                placeholder="請輸入您的姓名 (例如：阿信、張經理)"
+                                class="w-full text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-slate-700 bg-slate-50/40 placeholder-slate-400"
+                                maxLength={30}
+                                required 
+                            />
+                        </div>
+ 
+                        {/* CAT TABS + DRINK LIST */}
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1.5 flex items-center uppercase tracking-wider">
+                                🍵 選擇茗茶口味 <span class="text-red-500 ml-0.5">*</span>
+                            </label>
+ 
+                            {/* Filters */}
+                            <div class="flex overflow-x-auto space-x-1 mb-2.5 pb-1 -mx-1 px-1 scrollbar-none">
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() => setSelectedCategory(cat)}
+                                        class={`text-[10px] font-bold px-3 py-1 rounded-lg whitespace-nowrap border transition-all ${
+                                            selectedCategory === cat
+                                                ? 'bg-slate-900 text-white border-transparent shadow-sm'
+                                                : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+ 
+                            {/* Scrolling list */}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 border border-slate-100 p-2 rounded-2xl bg-slate-50/50 overflow-x-hidden">
+                                {filteredDrinks.map(drinkItem => {
+                                    const isSelected = selectedDrink && selectedDrink.name === drinkItem.name;
+                                    return (
+                                        <div
+                                            key={drinkItem.id || drinkItem.name}
+                                            onClick={() => setSelectedDrink(drinkItem)}
+                                            class={`p-2.5 rounded-xl border text-left cursor-pointer transition-all duration-200 select-none flex flex-col justify-between ${
+                                                isSelected
+                                                    ? 'bg-brand-50/70 border-brand-500/85 ring-1 ring-brand-500/50'
+                                                    : 'bg-white border-slate-200/60 hover:border-slate-300 hover:shadow-sm'
+                                            }`}
+                                        >
+                                            <div class="flex justify-between items-start">
+                                                <h4 class="text-xs font-bold text-slate-800 truncate pr-1.5 leading-tight">{drinkItem.name}</h4>
+                                                <span class="text-[9px] font-bold bg-slate-900 text-white px-2 py-0.5 rounded-md shrink-0 font-mono">
+                                                    NT${drinkItem.price}
+                                                </span>
+                                            </div>
+                                            <p class="text-[9px] text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">{drinkItem.description || "經典推薦，現熬回甘茶底。"}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+ 
+                        {/* SUGAR LEVEL */}
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 flex items-center uppercase tracking-wider">
+                                🍬 甜度調節
+                            </label>
+                            <div class="grid grid-cols-5 gap-1.5">
+                                {sugarOptions.map(option => {
+                                    const isSel = sugar === option;
+                                    return (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            onClick={() => setSugar(option)}
+                                            class={`text-[10px] py-1.5 rounded-xl border font-bold text-center transition-all ${
+                                                isSel
+                                                    ? 'bg-brand-600 border-transparent text-white shadow-sm font-extrabold'
+                                                    : 'bg-white border-slate-200/80 text-slate-500 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {option}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+ 
+                        {/* ICE LEVEL */}
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-1 flex items-center uppercase tracking-wider">
+                                ❄️ 冰度調節
+                            </label>
+                            <div class="grid grid-cols-5 gap-1.5">
+                                {iceOptions.map(option => {
+                                    const isSel = ice === option;
+                                    return (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            onClick={() => setIce(option)}
+                                            class={`text-[10px] py-1.5 rounded-xl border font-bold text-center transition-all ${
+                                                isSel
+                                                    ? 'bg-brand-600 border-transparent text-white shadow-sm font-extrabold'
+                                                    : 'bg-white border-slate-200/80 text-slate-500 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {option}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+ 
+                        {/* QUANTITY COUNTER STEPPER */}
+                        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-2xl border border-slate-200/50">
+                            <div>
+                                <span class="text-[10px] font-bold text-slate-600 block uppercase tracking-wider">📦 訂購杯數</span>
+                                <span class="text-[9px] text-slate-400">下午茶喝個過癮</span>
+                            </div>
+                            <div class="flex items-center space-x-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                                    class="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 font-bold text-xs select-none shadow-sm active:scale-95 transition"
+                                >
+                                    -
+                                </button>
+                                <span class="text-xs font-black text-slate-800 w-5 text-center font-mono">{quantity}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setQuantity(q => q + 1)}
+                                    class="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 font-bold text-xs select-none shadow-sm active:scale-95 transition"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+ 
+                        {/* CALCULATED VALUE PREVIEW */}
+                        <div class="bg-slate-50/50 p-3.5 rounded-2xl border border-dashed border-slate-200 space-y-1 text-[11px]">
+                            <div class="flex justify-between items-center text-slate-500">
+                                <span class="font-medium text-[10px]">當前規格</span>
+                                <span class="text-slate-800 font-bold truncate max-w-[180px] text-right">
+                                    {selectedDrink ? selectedDrink.name : "未選擇"} ({sugar} | {ice})
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-500">
+                                <span class="font-medium text-[10px]">計價基準</span>
+                                <span class="text-slate-800 font-bold font-mono">
+                                    {selectedDrink ? `NT$ ${selectedDrink.price} × ${quantity} 杯` : "NT$ 0"}
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center border-t border-dashed border-slate-200 pt-2 mt-2 font-bold">
+                                <span class="text-xs text-slate-800 font-bold">結算總價</span>
+                                <span class="text-base text-brand-600 font-semibold font-display">
+                                    NT$ {totalPrice}
+                                </span>
+                            </div>
+                        </div>
+ 
+                        {/* FORM SUBMISSION CONTROLS */}
+                        <div class="flex space-x-2 pt-1 font-sans">
+                            {editingOrder && (
+                                <button
+                                    type="button"
+                                    onClick={onCancelEdit}
+                                    class="w-1/3 py-2.5 border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition-all"
+                                >
+                                    取消
+                                </button>
+                            )}
+                            <button
+                                type="submit"
+                                class={`py-2.5 bg-slate-900 text-white font-extrabold rounded-xl shadow-md text-xs transition-all hover:bg-slate-800 active:scale-98 flex items-center justify-center space-x-1.5 ${
+                                    editingOrder 
+                                        ? 'w-2/3 bg-amber-500 hover:bg-amber-600' 
+                                        : 'w-full'
+                                }`}
+                            >
+                                <span class="icon text-[14px] leading-tight shrink-0 select-none">local_cafe</span>
+                                <span class="font-bold tracking-wide">{editingOrder ? "確定更新點單" : "送出我的特調點單"}</span>
+                            </button>
+                        </div>
+ 
+                    </form>
+                </div>
+            );
+        }
+
+        // ==================== ORDER LIST SUB-COMPONENT ====================
+        function OrderList({ orders, loading, onEdit, onDelete }) {
+            const [searchKeyword, setSearchKeyword] = useState("");
+ 
+            // Filter drinks based on user typing
+            const filteredOrders = useMemo(() => {
+                if (!searchKeyword.trim()) return orders;
+                const kw = searchKeyword.toLowerCase();
+                return orders.filter(o => 
+                    o.name.toLowerCase().includes(kw) || 
+                    o.drink.toLowerCase().includes(kw) ||
+                    o.sugar.toLowerCase().includes(kw) ||
+                    o.ice.toLowerCase().includes(kw)
+                );
+            }, [orders, searchKeyword]);
+ 
+            return (
+                <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-200/50 flex flex-col min-h-[420px]">
+                    
+                    {/* LIST SECTION CONTAINER */}
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-slate-100 pb-4">
+                        <div class="flex items-center space-x-3 shrink-0">
+                            <div class="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                                <span class="icon text-lg select-none">receipt_long</span>
+                            </div>
+                            <div>
+                                <h2 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5 leading-none">
+                                    本日點單清單
+                                    <span class="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                        {orders.length} 杯
+                                    </span>
+                                </h2>
+                                <p class="text-[10px] text-slate-400 mt-1 leading-none">辦公室所有夥伴的下午茶熱烈點單中</p>
+                            </div>
+                        </div>
+ 
+                        {/* Search input to refine listing */}
+                        {orders.length > 0 && (
+                            <div class="relative max-w-[200px] w-full">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs icon leading-none">search</span>
+                                <input 
+                                    type="text" 
+                                    value={searchKeyword} 
+                                    onChange={(e) => setSearchKeyword(e.target.value)} 
+                                    placeholder="搜尋名字或口味規格..."
+                                    class="w-full text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50/50 transition-all text-slate-700 placeholder-slate-400"
+                                />
+                            </div>
+                        )}
+                    </div>
+ 
+                    {/* DETAILS CONTAINER */}
+                    {loading ? (
+                        <div class="space-y-3 flex-1">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} class="p-4 border border-slate-200/60 rounded-2xl flex items-center justify-between">
+                                    <div class="space-y-2 w-2/3">
+                                        <div class="h-4 animate-shimmer rounded w-1/3 bg-slate-200"></div>
+                                        <div class="h-2 w-1/2 animate-shimmer rounded bg-slate-200"></div>
+                                    </div>
+                                    <div class="h-7 animate-shimmer rounded w-16 bg-slate-200"></div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div class="space-y-2 flex-1 overflow-y-auto max-h-[480px] pr-1">
+                            {orders.length === 0 ? (
+                                /* IF EMPTY STATE - GORGEOUS PRESENTATION (AS REQUESTED) */
+                                <div class="flex flex-col items-center justify-center text-center py-16 px-6 bg-slate-50/40 rounded-3xl border border-dashed border-slate-200/80 my-auto animate-in fade-in duration-300">
+                                    <div class="w-14 h-14 bg-white border border-slate-100 text-brand-600 rounded-2xl flex items-center justify-center shadow-premium mb-4">
+                                        <span class="icon text-2xl text-slate-800 select-none">local_cafe</span>
+                                    </div>
+                                    <h3 class="text-xs font-bold text-slate-700">🎉 今日茶聚尚未啟航唷！</h3>
+                                    <p class="text-[10px] text-slate-400 max-w-xs mt-2 mb-4 leading-relaxed">
+                                        大家說不定正在奮力工作中呢！快快使用左側的高雅點購面板，搶先點下今天下午的第一杯茶飲，引領整間辦公室的下午茶狂歡吧！🍵
+                                    </p>
+                                    <div class="text-[9px] text-slate-500 font-bold bg-white px-3.5 py-1.5 rounded-full border border-slate-200 shadow-sm">
+                                        👇 寫入名字、挑選飲品，快速一鍵加進試算表。
+                                    </div>
+                                </div>
+                            ) : filteredOrders.length === 0 ? (
+                                <div class="text-center py-14 text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                                    找不到符合「{searchKeyword}」條件的點購紀錄。
+                                </div>
+                            ) : (
+                                filteredOrders.map((order, idx) => (
+                                    <div 
+                                        key={order.orderId || idx}
+                                        class="p-3.5 bg-white hover:bg-slate-50/40 border border-slate-100 hover:border-slate-300 rounded-2xl flex items-center justify-between transition-all duration-200 shadow-sm"
+                                    >
+                                        <div class="flex items-center space-x-3.5 min-w-0 flex-1">
+                                            {/* Beautiful cup container identifier */}
+                                            <div class="bg-slate-900 text-white w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm select-none">
+                                                <span class="icon text-base select-none">local_bar</span>
+                                            </div>
+                                            
+                                            {/* Specifications fields */}
+                                            <div class="min-w-0 pr-1.5">
+                                                <div class="flex items-center space-x-2">
+                                                    <span class="text-xs font-bold text-slate-900 tracking-tight block max-w-[120px] truncate">
+                                                        {order.name}
+                                                    </span>
+                                                    <span class="text-[9px] text-slate-400 font-mono tracking-wide block">
+                                                        {order.timestamp || "剛剛"}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs font-bold text-slate-800 mt-1 flex items-center gap-1.5 leading-none">
+                                                    {order.drink}
+                                                    <span class="text-[9px] text-slate-400 font-mono font-medium">
+                                                        × {order.quantity} 杯
+                                                    </span>
+                                                </p>
+                                                
+                                                {/* Specifications Badges */}
+                                                <div class="flex items-center space-x-1 mt-2.5 flex-wrap gap-y-1">
+                                                    <span class="bg-slate-100 text-[9px] text-slate-600 px-2 py-0.5 rounded-md font-bold text-[9px]">
+                                                        {order.sugar}
+                                                    </span>
+                                                    <span class="bg-brand-50 text-[9px] text-brand-700 px-2 py-0.5 rounded-md font-bold text-[9px]">
+                                                        {order.ice}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+ 
+                                        {/* Pricing and Action lists */}
+                                        <div class="flex items-center space-x-2.5 shrink-0">
+                                            <div class="text-right pr-1.5 font-sans">
+                                                <span class="text-[9px] text-slate-400 block font-medium uppercase tracking-wider">合計</span>
+                                                <span class="text-xs font-bold text-slate-900 font-mono">
+                                                    NT$ {order.totalPrice}
+                                                </span>
+                                            </div>
+ 
+                                            {/* Action buttons list */}
+                                            <div class="flex items-center space-x-0.5 border-l border-slate-100 pl-2">
+                                                {/* Edit trigger */}
+                                                <button
+                                                    onClick={() => onEdit(order)}
+                                                    class="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
+                                                    title="修改此筆點單"
+                                                >
+                                                    <span class="icon text-[16px] leading-[1] select-none">edit</span>
+                                                </button>
+ 
+                                                {/* State confirmed delete trigger */}
+                                                <button
+                                                    onClick={() => onDelete(order)}
+                                                    class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                    title="移除此項目"
+                                                >
+                                                    <span class="icon text-[16px] leading-[1] select-none">delete_outline</span>
+                                                </button>
+                                            </div>
+                                        </div>
+ 
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== RENDERING COMPONENT ENTRANCE ====================
+        const rootElement = document.getElementById("root");
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
